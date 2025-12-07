@@ -1,0 +1,170 @@
+# PROG - 7
+
+import tensorflow as tf
+from tensorflow.keras import models,layers  
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.datasets import imdb
+import numpy as np
+
+num_words = 10000
+maxlen = 200
+
+(X_train,y_train),(X_test,y_test) = imdb.load_data(num_words=num_words)
+
+X_train = pad_sequences(X_train,maxlen=maxlen)
+X_test = pad_sequences(X_test,maxlen=maxlen)
+
+X_train,X_val,y_train,y_val = train_test_split(X_train,y_train,
+                                               test_size=0.2,
+                                               random_state=42)
+model = models.Sequential([
+    layers.Embedding(input_dim=num_words, output_dim=128, input_length=maxlen),
+    layers.Bidirectional(layers.LSTM(64,return_sequences=False)),
+    layers.Dropout(0.5),
+    layers.Dense(1,activation="sigmoid")
+])
+
+model.compile(optimizer="adam",
+              loss="binary_crossentropy",
+              metrics=["accuracy"])
+
+model.summary()
+
+history = model.fit(X_train,y_train,
+                    validation_data=(X_val,y_val),
+                    epochs=5,
+                    batch_size=64)
+
+loss,accuracy = model.evaluate(X_test,y_test)
+
+print("Accuracy = ",accuracy*100)
+
+
+
+def decode_review(encoded_review):
+    word_index = imdb.get_word_index()
+    reverse_words_index = {value:key for key,value in word_index.items()}
+
+    decoded_review = []
+
+    for i in encoded_review:
+        if i>2:
+            decoded_review.append(reverse_words_index.get(i-3))
+
+    return " ".join(decoded_review)
+
+def predict_sentiment(review):
+    word_index = imdb.get_word_index()
+    encoded_review = [word_index.get(word,0)+3 for word in review.split()]
+    padded_review = pad_sequences([encoded_review],maxlen=maxlen)
+    prediction = model.predict(padded_review,verbose=2)
+
+    sentiment = "POSITIVE" if prediction[0][0] >= 0.5 else "NEGATIVE"
+
+    return sentiment
+
+
+print("SAMPLE SENTIMENT :\n")
+
+for i in range(5):
+    review = decode_review(X_test[i])
+    sentiment = predict_sentiment(review)
+
+    print("*"*50)
+    print("\nREVIEW :", review)
+    print("SENTIMENT :", sentiment)
+    print()
+    print("*"*50)
+
+
+# PROG-8
+
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.models import Sequential 
+from keras.layers import Dense
+from keras.datasets  import mnist
+import random
+
+(X_train,y_train),(X_test,y_test) = mnist.load_data()
+print("Training Data Shape",X_train.shape)
+print("Testing Data Shape",X_test.shape)
+
+for i in range(1,5):
+    plt.subplot(2,2,i)
+    plt.imshow(X_train[random.randint(1,100)],plt.get_cmap("gray"))
+plt.show()
+
+num_pixels = 28*28
+X_train = X_train.reshape(X_train.shape[0],num_pixels).astype("float32")
+X_test = X_test.reshape(X_test.shape[0],num_pixels).astype("float32")
+X_train = X_train/255
+X_test = X_test/255
+  
+print("Reshaped Training Data Shape",X_train.shape)
+print("Reshaped Testing Data Shape",X_test.shape)
+
+noise_factor = 0.2
+x_train_noisy = X_train + noise_factor * np.random.normal(
+    loc=0.0, scale=1.0, size=X_train.shape
+)
+
+x_test_noisy = X_test + noise_factor * np.random.normal(
+    loc=0.0, scale=1.0, size=X_test.shape
+)
+
+x_train_noisy = np.clip(x_train_noisy, 0., 1.)
+x_test_noisy = np.clip(x_test_noisy, 0., 1.)
+
+model = Sequential([
+    Dense(500,activation="relu",input_dim=784),
+    Dense(300,activation="relu"),
+    Dense(100,activation="relu"),
+    Dense(300,activation="relu"),
+    Dense(500,activation="relu"),
+    Dense(784,activation="sigmoid")
+])
+
+model.compile(loss="mean_squared_error",optimizer="adam")
+
+print("Training")
+history = model.fit(x_train_noisy,X_train,validation_data=(x_test_noisy,X_test),epochs=2,batch_size=200)
+
+print("Evaluating")
+pred = model.predict(x_test_noisy)
+
+print("Shape of predicted Data = ",pred.shape)
+print("Shape of Test Data = ",X_test.shape)
+
+# back to image 
+X_test      = np.reshape(X_test, (10000, 28, 28)) * 255
+pred        = np.reshape(pred, (10000, 28, 28)) * 255
+x_test_noisy = np.reshape(x_test_noisy, (-1, 28, 28)) * 255
+
+# test 
+plt.figure(figsize=(20, 4))
+print("Test Images")
+for i in range(10, 20, 1):
+    plt.subplot(2, 10, i + 1)
+    plt.imshow(X_test[i, :, :], cmap='gray')
+    curr_lbl = y_test[i]
+    plt.title(f"(Label: {curr_lbl})")
+plt.show()
+
+#  noisy 
+plt.figure(figsize=(20, 4))
+print("Test Images with Noise")
+for i in range(10, 20, 1):
+    plt.subplot(2, 10, i + 1)
+    plt.imshow(x_test_noisy[i, :, :], cmap='gray')
+plt.show()
+
+#  denoised
+plt.figure(figsize=(20, 4))
+print("Reconstruction of Noisy Test Images")
+for i in range(10, 20, 1):
+    plt.subplot(2, 10, i + 1)
+    plt.imshow(pred[i, :, :], cmap='gray')
+plt.show()
+
