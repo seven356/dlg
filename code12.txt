@@ -1,36 +1,25 @@
-import tensorflow as tf
-from tensorflow.keras import layers,models
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras.utils import to_categorical
+# PROG - 2
 
-(X_train,y_train),(X_test,y_test) = mnist.load_data()
+import numpy as np
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import SGD
 
-X_train = X_train/255.0
-X_test = X_test/255.0
-
-X_train = X_train.reshape((X_train.shape[0],28,28))
-X_test = X_test.reshape((X_test.shape[0],28,28))
-
-y_train = to_categorical(y_train,10)
-y_test = to_categorical(y_test,10)
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+y = np.array([[0],[1],[1],[0]])
 
 
-
-model = models.Sequential([
-    layers.LSTM(128,activation="relu",input_shape=(28,28)),
-    layers.Dense(10,activation="softmax")
+model = Sequential([
+    Dense(4,input_dim = 2 ,activation = "relu"), # Hidden layer 8 neuron
+    Dense(1,activation="sigmoid") # Output layer One Neuron, binary Classfication
 ])
 
-model.compile(loss = "binary_crossentropy",
-              optimizer="adam",
-              metrics=["accuracy"])
+model.compile(loss="binary_crossentropy",optimizer=SGD(learning_rate=0.1),metrics=["accuracy"])
 
-model.fit(X_train,y_train,epochs=10,
-          batch_size=64,
-          validation_data=(X_test,y_test))
+model.fit(X,y,epochs=1000,verbose = 0)
 
-loss,accuracy = model.evaluate(X_test,y_test)
+_,accuracy = model.evaluate(X,y)
+print(f"model accuracy = {accuracy*100:.2f}%")
 
-print("Accuracy = ",accuracy)
-
-
+predictions = model.predict(X)
+print("Predictions : \n",predictions)
